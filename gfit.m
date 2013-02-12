@@ -43,6 +43,5 @@ sigma=sqrt(-1/(2*A2));
 mu=A1*sigma^2;
 A=exp(A0+mu^2/(2*sigma^2));
 
-
+return;
 end
-

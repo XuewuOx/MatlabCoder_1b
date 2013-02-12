@@ -24,7 +24,19 @@ y=Anew*exp(-(x-muNew).^2/(2*sigmaNew^2));
 hold on; plot(x,y,'.r');
 title(sprintf('Gaussian fitting over simulated data \n sig=%.2f, mu=%.2f, A=%.2f',sigmaNew, muNew, Anew));
 
-%% read ref.txt file and do Gaussian fitting
+%% mex test: read ref.txt file and do Gaussian fitting
+
+fnamescan='refscan_20130205_16h42m02s.txt';
+fnamemeas='wtrmeas.txt';
+
+localFolder='E:\Beagle\Eclipseworkspace\MatlabCoder_1b';
+remotefilename=strcat('/home/ubuntu/Loadmon_BeaglePlus/',fnamescan);
+fprintf('Fetch remote file %s\n', remotefilename);
+scptomatlab('ubuntu','10.2.1.239','temppwd',localFolder,remotefilename);
 figure;
-gfit_rdfile_mex('wtr.txt')
+gfit_rdfile_mex(fnamescan)
+
+%% test gfit.m only, data file is read by importdata() 
+% plotscandata.m is at .\MatlabCoder_1b\manual_from_mbed
+plotscandata(fnamescan);
 

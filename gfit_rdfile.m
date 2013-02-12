@@ -1,5 +1,5 @@
-function [y] = gfit_rdfile(filename) %#codegen
-% version: readfile_v3a.m
+function [gfir gfuv] = gfit_rdfile(filename) %#codegen
+% version: .\work_readfile\readfile_v5.m
 
 % The 'fprintf' function will not be compiled and instead passed
 % to the MATLAB runtime. If we choose to generate code for this example,
@@ -15,6 +15,7 @@ coder.extrinsic('xlabel');
 coder.extrinsic('ylabel');
 coder.extrinsic('stem');
 coder.extrinsic('figure');
+coder.extrinsic('grid');
 
 % Put class and size constraints on function input.
 assert(isa(filename, 'char'));
@@ -34,7 +35,7 @@ f = coder.ceval('fopen', c_string(filename), c_string('r'));
 tempvar=coder.ceval('(int)',f);
 if (tempvar==0)
     fprintf('Open file %s failed.\n', filename);
-    y=-1;
+    gfir=[-1 -1 -1]; gfuv=[-1 -1 -1];
     return;
 end;
 
@@ -55,9 +56,12 @@ coder.ceval('fseek', f, int32(0), coder.opaque('int', 'SEEK_SET'));
 
 % Initialize a buffer
 bufSIZE=65536*1024;
-buffer = zeros(1,bufSIZE,'uint8');
-bufline=zeros(1,65536,'uint8');
-strline=zeros(1,1024,'uint8');
+% buffer = zeros(1,bufSIZE,'uint8');
+bufline=zeros(1,65536,'uint8'); 
+   % NOTE: bufline will be define as uint8_T type in generated C code
+   % manually change its type to char_T in the generated c codes, 
+   % like char_T bufline[65536];
+% strline=zeros(1,1024,'uint8');
 nStep=zeros(1,1,'int32');
 
 % Remaining is the number of bytes to read (from the file)
@@ -93,7 +97,7 @@ nVar=coder.ceval('fscanf',f, ...
  if (nVar~=6)
       fprintf('ERROR: fscanf cannot read formatted line %d. Inncorrect format\n', nline);
       coder.ceval('fclose', f);
-    y=-2; 
+      gfir=[-2 -2 -2]; gfuv=[-2 -2 -2];
       return;
  end;
  fprintf('nVar=%d, posA=%d, posB=%d, nStep=%d, nSam=%d, Fs=%d\n', ...
@@ -115,11 +119,13 @@ xir=int32(0);
 xuv=int32(0);
 k=1;
 
+lenChar=int32(0);
+lenChar=7+nSam*10+2;
 % read data line-by-line
 for k=1:nStep
     nline=nline+1; 
     % fprintf('line %d, ',nline);
-    coder.ceval('fgets',coder.ref(bufline(1)), int32(1024),f);  
+    coder.ceval('fgets',coder.ref(bufline(1)), int32(lenChar),f);  
     nChar=coder.ceval('strlen',coder.ref(bufline(1)));
     % fprintf('(%d)="%s',nChar,bufline(1:nChar));  % to debug if fgets ok
   
@@ -131,14 +137,16 @@ for k=1:nStep
      for i=1:nSam
          nVar=coder.ceval('sscanf',coder.ref(bufline(7+10*(i-1))), ['%d %d'],coder.ref(xir), coder.ref(xuv));
          if (nVar~=2)
-             fprintf('ERROR: fscanf cannot read formatted line %d. Inncorrect format\n', nline);
+             fprintf('ERROR: sscanf cannot read formatted item %d, line %d. [xir=%d, xuv=%d]Inncorrect format\n', i, nline, xir, xuv);
              coder.ceval('fclose', f);
-             y=-2; 
+             gfir=[-2 -2 -2]; gfuv=[-2 -2 -2];
              return;
          end;
+         % fprintf (' %04d %04d', xir, xuv);
          dataIR(k,i)=coder.ceval('(double)',xir);
          dataUV(k,i)=coder.ceval('(double)',xuv);
      end;
+     % fprintf ('\n');
      
 %      % display the dataIR and dataUV
 %      fprintf('  dataIR(%d,:)=%s\n',k,num2str(dataIR(k,1:nSam)));
@@ -172,7 +180,7 @@ fprintf('reading file successes, %d lines, %d-%d steps. Close file and return\n'
  dataIR_mean=mean(dataIR,2);
  dataUV_mean=mean(dataUV,2);
 %   % % plot mean data 
-    figure('name','IR/UV means vs motor steps');
+    figure('name',filename);
     fprintf('  dataIR_mean=%s\n',num2str(dataIR_mean'));
     fprintf('  dataUV_mean=%s\n',num2str(dataUV_mean'));
     plot(dataMS, dataIR_mean,'.-r');
@@ -190,7 +198,7 @@ fprintf('reading file successes, %d lines, %d-%d steps. Close file and return\n'
          round(muUV),muUV, sigmaUV, AUV);
     y_gf=AUV*exp(-(dataMS-muUV).^2/(2*sigmaUV^2));
     plot(dataMS,y_gf,'.-m');
-    stem(round(muUV),AUV,'sr');
+    stem(round(muUV),AUV,'sk');
     
 % % gaussian fitting over IR
     fprintf('Gaussian fit over dataIR');
@@ -200,12 +208,16 @@ fprintf('reading file successes, %d lines, %d-%d steps. Close file and return\n'
     fprintf('... OK.\n optimal postion of IR(step) is %04d (mu=%f, sigma=%f, A=%f)\n',...
          round(muIR),muIR, sigmaIR, AIR);
     y_gf=AIR*exp(-(dataMS-muIR).^2/(2*sigmaIR^2));
-    plot(dataMS,y_gf,'.-y');
-    stem(round(muIR),AIR,'sk');
-    title(sprintf('IR/UV vs steps \n opt(UV)=%d, opt(IR)=%d',round(muUV), round(muIR)), 'fontsize', 14);
-
+    plot(dataMS,y_gf,'.-g');
+    stem(round(muIR),AIR,'sg');
+    % title(sprintf('IR/UV vs steps \n opt(UV)=%d, opt(IR)=%d',round(muUV), round(muIR)), 'fontsize', 14);
+     title(sprintf('%s (MS: %d to %d) \n opt(UV)=%d, opt(IR)=%d ',filename,dataMS(1),dataMS(nStep), round(muUV), round(muIR)), ...
+        'Interpreter','none','fontsize', 14);
+    grid on;
+    
 % return the optimal step 
-y=round(mu);
+gfir=[round(muIR) AIR sigmaIR];
+gfuv=[round(muUV) AUV sigmaUV];
 % save('instData', 'dataIR', 'dataUV','dataIR_mean','dataUV_mean');
 return;
 
