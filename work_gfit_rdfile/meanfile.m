@@ -1,5 +1,5 @@
-function [dir duv] = meanfile(filename) %#codegen
-% version: .\work_readfile\meanfile_v1.m
+function [dIR dUV] = meanfile(filename) %#codegen
+% version: .\work_gfit_rdfile\meanfile_v2.m
 
 % The 'fprintf' function will not be compiled and instead passed
 % to the MATLAB runtime. If we choose to generate code for this example,
@@ -16,13 +16,16 @@ coder.extrinsic('ylabel');
 coder.extrinsic('stem');
 coder.extrinsic('figure');
 coder.extrinsic('grid');
-
+coder.extrinsic('subplot');
 % Put class and size constraints on function input.
 assert(isa(filename, 'char'));
 assert(size(filename, 1) == 1);
 assert(size(filename, 2) <= 1024);
 
 tempvar=int32(-1);
+
+dIR=zeros(1,2);
+dUV=zeros(1,2);
 
 % Define a new opaque variable 'f' which will be of type 'FILE *'
 % in the generated C code initially with the value NULL.
@@ -35,7 +38,7 @@ f = coder.ceval('fopen', c_string(filename), c_string('r'));
 tempvar=coder.ceval('(int)',f);
 if (tempvar==0)
     fprintf('Open file %s failed.\n', filename);
-    dir=[-1 -1]; duv=[-1 -1];
+    dIR=[-1 -1]; dUV=[-1 -1];
     return;
 end;
 
@@ -55,9 +58,9 @@ fprintf('filelen=%d\n',filelen);
 coder.ceval('fseek', f, int32(0), coder.opaque('int', 'SEEK_SET'));
 
 % Initialize a buffer
-bufSIZE=65536*1024;
+bufSIZE=65536*16;
 % buffer = zeros(1,bufSIZE,'uint8');
-bufline=zeros(1,65536,'uint8'); 
+bufline=zeros(1,bufSIZE,'uint8'); 
    % NOTE: bufline will be define as uint8_T type in generated C code
    % manually change its type to char_T in the generated c codes, 
    % like char_T bufline[65536];
@@ -97,7 +100,7 @@ nVar=coder.ceval('fscanf',f, ...
  if (nVar~=6)
       fprintf('ERROR: fscanf cannot read formatted line %d. Inncorrect format\n', nline);
       coder.ceval('fclose', f);
-      dir=[-2 -2]; duv=[-2 -2];
+      dIR=[-2 -2]; dUV=[-2 -2];
       return;
  end;
  fprintf('nVar=%d, posA=%d, posB=%d, nStep=%d, nSam=%d, Fs=%d\n', ...
@@ -119,6 +122,7 @@ xtime=zeros(nStep,nSam);
 xir=int32(0);
 xuv=int32(0);
 k=1;
+kChar=0; 
 
 lenChar=int32(0);
 lenChar=7+nSam*10+2;
@@ -127,7 +131,7 @@ if (nStep~=1)
      % refir.txt, refuv.txt, wtrir.txt, wtruv.txt should contain
       % ONE data line ONLY.
       fprintf('ERROR: ???ir.txt and ???uv.txt have more than ONE data line. Inncorrect format\n');
-      dir=[-3 -3]; duv=[-3 -3];
+      dIR=[-3.0 -3.0]; dUV=[-3.0 -3.0];
      return; 
 end;
     
@@ -136,7 +140,7 @@ for k=1:nStep
     % fprintf('line %d, ',nline);
     coder.ceval('fgets',coder.ref(bufline(1)), int32(lenChar),f);  
     nChar=coder.ceval('strlen',coder.ref(bufline(1)));
-    % fprintf('(%d)="%s',nChar,bufline(1:nChar));  % to debug if fgets ok
+    fprintf('(%d Chars)="%s ... %s',nChar,bufline(1:17), bufline(nChar-30:nChar));  % to debug if fgets ok
   
    %  % read motor step data
      nVar=coder.ceval('sscanf', coder.ref(bufline(1)), ['%d '],coder.ref(k4step));
@@ -144,34 +148,62 @@ for k=1:nStep
      dataMS(k)=coder.ceval('(double)',k4step);
    %  % read IR UV data
      for i=1:nSam
-         nVar=coder.ceval('sscanf',coder.ref(bufline(7+10*(i-1))), ['%d %d'],coder.ref(xir), coder.ref(xuv));
+         % nVar=coder.ceval('sscanf',coder.ref(bufline(7+10*(i-1))), ['%d %d'],coder.ref(xir), coder.ref(xuv));
+          kChar=7+10*(i-1);
+          xir=int32(0);
+          xuv=int32(0);
+          % fprintf('bufline=%s,  ',bufline(kChar:kChar+9));
+          for ii=1:4
+            % x4Char(ii)=bufline(kChar+ii-1)-30;
+            xir=xir*10+int32(bufline(kChar+ii-1)-48);
+            xuv=xuv*10+int32(bufline(kChar+5+ii-1)-48);;
+          end;
+          nVar=2;
          if (nVar~=2)
-             fprintf('ERROR: sscanf cannot read formatted item %d, line %d. [xir=%d, xuv=%d]Inncorrect format\n', i, nline, xir, xuv);
+             fprintf('ERROR: nVar=%d sscanf cannot read formatted item %d, line %d. [xir=%d, xuv=%d]Inncorrect format\n', nVar,i, nline, xir, xuv);
              coder.ceval('fclose', f);
-             dir=[-2 -2]; duv=[-2 -2];
+             dIR=[-2 -2]; dUV=[-2 -2];
              return;
          end;
-         % fprintf (' %04d %04d', xir, xuv);
-         dataIR(k,i)=coder.ceval('(double)',xir);
-         dataUV(k,i)=coder.ceval('(double)',xuv);
+%          if (i<5)
+%              fprintf ('xir=%04d xuv=%04d \r\n', xir, xuv);
+%          end;
+%         dataIR(k,i)=coder.ceval('(double)',xir);
+%         dataUV(k,i)=coder.ceval('(double)',xuv);
+          dataIR(k,i)=double(xir);
+          dataUV(k,i)=double(xuv);
      end;
 end;
     
 % Close file
 coder.ceval('fclose', f);
-fprintf('reading file successes, %d lines, %d-%d steps. Close file and return\n',...
-    nline,dataMS(1), dataMS(length(dataMS)));
+fprintf('reading file successes, %d lines, %d (%d-%d) steps. Close file and return\n',...
+    nline,abs(dataMS(length(dataMS))-dataMS(1))+1, dataMS(1),dataMS(length(dataMS)));
 
 % % data processing
  dataIR_mean=mean(dataIR,2);
  dataUV_mean=mean(dataUV,2);
- dataIR_std=std(dataIR,0,2);
- dataUV_std=std(dataUV,0,2);
+
+ dataIR_std=std(dataIR(1,:),0,2);
+ dataUV_std=std(dataUV(1,:),0,2);
+ 
+ % [isSuccess,indok,pdffit]=removeFoams(dataIR);
+ [sigIR, muIR, aIR]=gfitPDF(dataIR(1,:),0.3);
+ subplot(1,2,1); title('IR');
+ 
+ sigUV=0; muUV=0; aUV=0;
+ [sigUV, muUV, aUV]=gfitPDF(dataUV(1,:),0.3);
+ subplot(1,2,1); title('UV');
  
 %   % % plot mean data 
     figure('name',filename);
-    fprintf('  IR_mean=%5.2f, std=%5.2f\n',dataIR_mean, dataIR_std);
-    fprintf('  UV_mean=%5.2f, std=%5.2f\n',dataUV_mean, dataUV_std);
+    fprintf('mean:   IR_mean=%5.2f, std=%5.2f\n',dataIR_mean, dataIR_std);
+    fprintf('gfitPDF:  IR_mu=%5.2f, sig=%5.2f\n',muIR, sigIR);
+    
+    fprintf('mean:   UV_mean=%5.2f, std=%5.2f\n',dataUV_mean, dataUV_std);
+    fprintf('gfitPDF:  UV_mu=%5.2f, sig=%5.2f\n',muUV, sigUV);
+    dir_gfit=[muIR, sigIR];
+    duv_gfit=[muUV,sigUV];
     % xtime=[1/nFs:1/nFs:nSam/nFs];
     
     xtime=[1:nSam];
@@ -207,8 +239,10 @@ fprintf('reading file successes, %d lines, %d-%d steps. Close file and return\n'
      grid on;
     
 % return the optimal step 
-dir=[dataIR_mean dataIR_std];
-duv=[dataUV_mean dataUV_std];
+% dIR=[dataIR_mean dataIR_std];
+% dUV=[dataUV_mean dataUV_std];
+ dIR=dir_gfit;
+ dUV=duv_gfit;
 % save('instData', 'dataIR', 'dataUV','dataIR_mean','dataUV_mean');
 return;
 
@@ -240,7 +274,7 @@ function [sigma, mu, A] = gfit(x,y,h) %#codegen
 
 
 %% threshold
-if nargin==2, h=0.2; end
+if nargin==1, h=0.2; end
 
 z=hist(x,10);
 %% cutting
