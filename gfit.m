@@ -18,7 +18,7 @@ function [sigma, mu, A] = gfit(x,y,h) %#codegen
 
 
 %% threshold
-if nargin==2, h=0.2; end
+if nargin==1, h=0.2; end
 
 z=hist(x,10);
 %% cutting

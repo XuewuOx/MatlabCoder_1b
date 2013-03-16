@@ -118,6 +118,7 @@ dataUV=zeros(nStep,nSam);
 xir=int32(0);
 xuv=int32(0);
 k=1;
+kChar=0; 
 
 lenChar=int32(0);
 lenChar=7+nSam*10+2;
@@ -135,12 +136,24 @@ for k=1:nStep
      dataMS(k)=coder.ceval('(double)',k4step);
    %  % read IR UV data
      for i=1:nSam
-         nVar=coder.ceval('sscanf',coder.ref(bufline(7+10*(i-1))), ['%d %d'],coder.ref(xir), coder.ref(xuv));
-         if (nVar~=2)
-             fprintf('ERROR: sscanf cannot read formatted item %d, line %d. [xir=%d, xuv=%d]Inncorrect format\n', i, nline, xir, xuv);
-             coder.ceval('fclose', f);
-             gfir=[-2 -2 -2]; gfuv=[-2 -2 -2];
-             return;
+         
+         % nVar=coder.ceval('sscanf',coder.ref(bufline(7+10*(i-1))), ['%d %d'],coder.ref(xir), coder.ref(xuv));
+         kChar=7+10*(i-1);
+
+         xir=int32(0);
+         xuv=int32(0);
+         % fprintf('bufline=%s,  ',bufline(kChar:kChar+9));
+         for ii=1:4
+            % x4Char(ii)=bufline(kChar+ii-1)-30;
+            xir=xir*10+int32(bufline(kChar+ii-1)-48);
+            xuv=xuv*10+int32(bufline(kChar+5+ii-1)-48);;
+         end;
+         if (kChar>nChar)
+          % ERROR: no enough chars for reading, 
+             fprintf('ERROR: No enough chars for reading at char %d, line %d. Cancel data processing\n', kChar, nline);
+              coder.ceval('fclose', f);
+              gfir=[-2 -2 -2]; gfuv=[-2 -2 -2];
+              return;
          end;
          % fprintf (' %04d %04d', xir, xuv);
          dataIR(k,i)=coder.ceval('(double)',xir);
@@ -249,7 +262,7 @@ function [sigma, mu, A] = gfit(x,y,h) %#codegen
 
 
 %% threshold
-if nargin==2, h=0.2; end
+if nargin==1, h=0.2; end
 
 z=hist(x,10);
 %% cutting
