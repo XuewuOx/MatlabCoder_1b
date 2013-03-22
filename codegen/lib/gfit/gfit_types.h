@@ -3,7 +3,7 @@
  *
  * Code generation for function 'gfit_rdfile'
  *
- * C source code generated on: Thu Feb 14 17:57:51 2013
+ * C source code generated on: Sat Mar 16 18:31:26 2013
  *
  */
 
@@ -32,6 +32,14 @@ typedef struct emxArray_real_T
     int32_T numDimensions;
     boolean_T canFreeData;
 } emxArray_real_T;
+#endif
+#ifndef struct_emxArray_real_T_100
+#define struct_emxArray_real_T_100
+typedef struct emxArray_real_T_100
+{
+    real_T data[100];
+    int32_T size[1];
+} emxArray_real_T_100;
 #endif
 #ifndef struct_emxArray_real_T_3
 #define struct_emxArray_real_T_3

@@ -3,12 +3,13 @@
  *
  * Code generation for function 'mean'
  *
- * C source code generated on: Thu Feb 14 17:57:51 2013
+ * C source code generated on: Sat Mar 16 18:31:26 2013
  *
  */
 
 /* Include files */
 #include "rt_nonfinite.h"
+#include "gfitPDF.h"
 #include "gfit_rdfile.h"
 #include "meanfile.h"
 #include "mean.h"

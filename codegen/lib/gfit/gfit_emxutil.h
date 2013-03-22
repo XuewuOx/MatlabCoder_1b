@@ -3,7 +3,7 @@
  *
  * Code generation for function 'gfit_emxutil'
  *
- * C source code generated on: Thu Feb 14 17:57:51 2013
+ * C source code generated on: Sat Mar 16 18:31:26 2013
  *
  */
 
@@ -32,6 +32,7 @@
 
 /* Function Declarations */
 extern void b_emxInit_real_T(emxArray_real_T **pEmxArray, int32_T numDimensions);
+extern void c_emxInit_real_T(emxArray_real_T **pEmxArray, int32_T numDimensions);
 extern void emxEnsureCapacity(emxArray__common *emxArray, int32_T oldNumel, int32_T elementSize);
 extern void emxFree_real_T(emxArray_real_T **pEmxArray);
 extern void emxInit_real_T(emxArray_real_T **pEmxArray, int32_T numDimensions);

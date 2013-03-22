@@ -1,6 +1,14 @@
-function [dIR dUV] = meanfile(filename) %#codegen
-% version: .\work_gfit_rdfile\meanfile_v2.m
-
+function [IRgf UVgf IRavg UVavg] = meanfile(filename) %#codegen
+% Calcuate stastistics of IR and UV signals
+%
+% version: .\work_gfit_rdfile\meanfile_v3.m
+% Return values: IRgf=[muIR, sigIR, aIR] for mean, width and amplitude of
+%                       Gaussian fitting over hist(IR)
+%                UVgf=[muUV, sigUV, aUV] for mean, width and amplitude of
+%                       Gaussian fitting over hist(IR)
+%         IRavg=[meanIR, stdIR] for mean and std of IR by mean() and std()
+%         UVavg=[meanUV, stdUV] for mean and std of UV by mean() and std()
+% 
 % The 'fprintf' function will not be compiled and instead passed
 % to the MATLAB runtime. If we choose to generate code for this example,
 % all calls to extrinsic functions are automatically eliminated.
@@ -24,8 +32,10 @@ assert(size(filename, 2) <= 1024);
 
 tempvar=int32(-1);
 
-dIR=zeros(1,2);
-dUV=zeros(1,2);
+IRgf=zeros(1,3);
+UVgf=zeros(1,3);
+IRavg=zeros(1,2);
+UVavg=zeros(1,2);
 
 % Define a new opaque variable 'f' which will be of type 'FILE *'
 % in the generated C code initially with the value NULL.
@@ -38,7 +48,7 @@ f = coder.ceval('fopen', c_string(filename), c_string('r'));
 tempvar=coder.ceval('(int)',f);
 if (tempvar==0)
     fprintf('Open file %s failed.\n', filename);
-    dIR=[-1 -1]; dUV=[-1 -1];
+    IRgf=[-1 -1 -1]; UVgf=[-1 -1 -1];
     return;
 end;
 
@@ -100,7 +110,7 @@ nVar=coder.ceval('fscanf',f, ...
  if (nVar~=6)
       fprintf('ERROR: fscanf cannot read formatted line %d. Inncorrect format\n', nline);
       coder.ceval('fclose', f);
-      dIR=[-2 -2]; dUV=[-2 -2];
+      IRgf=[-2 -2 -2]; UVgf=[-2 -2 -2];
       return;
  end;
  fprintf('nVar=%d, posA=%d, posB=%d, nStep=%d, nSam=%d, Fs=%d\n', ...
@@ -131,7 +141,7 @@ if (nStep~=1)
      % refir.txt, refuv.txt, wtrir.txt, wtruv.txt should contain
       % ONE data line ONLY.
       fprintf('ERROR: ???ir.txt and ???uv.txt have more than ONE data line. Inncorrect format\n');
-      dIR=[-3.0 -3.0]; dUV=[-3.0 -3.0];
+      IRgf=[-3.0 -3.0 -3]; UVgf=[-3.0 -3.0 -3];
      return; 
 end;
     
@@ -162,7 +172,7 @@ for k=1:nStep
          if (nVar~=2)
              fprintf('ERROR: nVar=%d sscanf cannot read formatted item %d, line %d. [xir=%d, xuv=%d]Inncorrect format\n', nVar,i, nline, xir, xuv);
              coder.ceval('fclose', f);
-             dIR=[-2 -2]; dUV=[-2 -2];
+             IRgf=[-2 -2 -2]; UVgf=[-2 -2 -2];
              return;
          end;
 %          if (i<5)
@@ -180,20 +190,32 @@ coder.ceval('fclose', f);
 fprintf('reading file successes, %d lines, %d (%d-%d) steps. Close file and return\n',...
     nline,abs(dataMS(length(dataMS))-dataMS(1))+1, dataMS(1),dataMS(length(dataMS)));
 
-% % data processing
- dataIR_mean=mean(dataIR,2);
+%% data processing
+
+% calculating by mean() and std() 
+dataIR_mean=mean(dataIR,2);
  dataUV_mean=mean(dataUV,2);
 
  dataIR_std=std(dataIR(1,:),0,2);
  dataUV_std=std(dataUV(1,:),0,2);
  
- % [isSuccess,indok,pdffit]=removeFoams(dataIR);
+ % set return values of IRavg, UVavg 
+ IRavg=[dataIR_mean, dataIR_std];
+ UVavg=[dataUV_mean, dataUV_std];
+ 
+ % calculalting by Gaussian fitting over hist()
+ 
  [sigIR, muIR, aIR]=gfitPDF(dataIR(1,:),0.3);
  subplot(1,2,1); title('IR');
  
- sigUV=0; muUV=0; aUV=0;
+ % sigUV=0; muUV=0; aUV=0;
  [sigUV, muUV, aUV]=gfitPDF(dataUV(1,:),0.3);
  subplot(1,2,1); title('UV');
+ 
+ % return the optimal step 
+ IRgf=[muIR, sigIR, aIR];
+ UVgf=[muUV, sigUV, aUV];
+
  
 %   % % plot mean data 
     figure('name',filename);
@@ -202,47 +224,18 @@ fprintf('reading file successes, %d lines, %d (%d-%d) steps. Close file and retu
     
     fprintf('mean:   UV_mean=%5.2f, std=%5.2f\n',dataUV_mean, dataUV_std);
     fprintf('gfitPDF:  UV_mu=%5.2f, sig=%5.2f\n',muUV, sigUV);
-    dir_gfit=[muIR, sigIR];
-    duv_gfit=[muUV,sigUV];
-    % xtime=[1/nFs:1/nFs:nSam/nFs];
     
     xtime=[1:nSam];
-    plot(xtime, dataIR,'.-r');
-    hold on;
+    plot(xtime, dataIR,'.-r');    hold on;
     plot(xtime, dataUV,'o-b');
     xlabel('Samples','fontsize',12); ylabel('IR/UV (mv)', 'fontsize',12);
     fprintf('plot UVIR data OK\n');
-% % gaussian fitting over UV
-    % fprintf('Gaussian fit over dataUV');
-    % [sigmaUV, muUV, AUV] = gfit(dataMS,dataUV_mean,0.2);
-    % % plot gaussian fitting results
-    % fprintf('... OK.\n optimal postion of UV(step) is %04d (mu=%f, sigma=%f, A=%f)\n',...
-    %     round(muUV),muUV, sigmaUV, AUV);
-    % y_gf=AUV*exp(-(dataMS-muUV).^2/(2*sigmaUV^2));
-    % plot(dataMS,y_gf,'.-m');
-    % stem(round(muUV),AUV,'sk');
-    
-% % gaussian fitting over IR
-
-%    fprintf('Gaussian fit over dataIR');
-%     [sigmaIR, muIR, AIR] = gfit(dataMS,dataIR_mean,0.2);
-%     % plot gaussian fitting results
-%     fprintf('... OK.\n optimal postion of IR(step) is %04d (mu=%f, sigma=%f, A=%f)\n',...
-%          round(muIR),muIR, sigmaIR, AIR);
-%     y_gf=AIR*exp(-(dataMS-muIR).^2/(2*sigmaIR^2));
-%     plot(dataMS,y_gf,'.-g');
-%     stem(round(muIR),AIR,'sg');
 
     % title(sprintf('IR/UV vs steps \n opt(UV)=%d, opt(IR)=%d',round(muUV), round(muIR)), 'fontsize', 14);
      title(sprintf('%s (@MS=%d, Fs=%dHz) \n IR=[%5.2f, %5.2f] UV=[%5.2f %5.2f]',filename,dataMS(1), nFs,dataIR_mean, dataIR_std, dataUV_mean, dataUV_std), ...
         'Interpreter','none','fontsize', 14);
      grid on;
     
-% return the optimal step 
-% dIR=[dataIR_mean dataIR_std];
-% dUV=[dataUV_mean dataUV_std];
- dIR=dir_gfit;
- dUV=duv_gfit;
 % save('instData', 'dataIR', 'dataUV','dataIR_mean','dataUV_mean');
 return;
 

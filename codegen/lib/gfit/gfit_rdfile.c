@@ -3,16 +3,18 @@
  *
  * Code generation for function 'gfit_rdfile'
  *
- * C source code generated on: Thu Feb 14 17:57:51 2013
+ * C source code generated on: Sat Mar 16 18:31:26 2013
  *
  */
 
 /* Include files */
 #include "rt_nonfinite.h"
+#include "gfitPDF.h"
 #include "gfit_rdfile.h"
 #include "meanfile.h"
 #include "gfit_emxutil.h"
 #include "polyfit.h"
+#include "log.h"
 #include "mean.h"
 #include "gfit_rtwutil.h"
 
@@ -27,8 +29,6 @@
 /* Function Declarations */
 static void gfit(const emxArray_real_T *x, const emxArray_real_T *y, real_T
                  *sigma, real_T *mu, real_T *A);
-static real_T rt_powd_snf(real_T u0, real_T u1);
-static real_T rt_roundd_snf(real_T u);
 
 /* Function Definitions */
 static void gfit(const emxArray_real_T *x, const emxArray_real_T *y, real_T
@@ -43,7 +43,6 @@ static void gfit(const emxArray_real_T *x, const emxArray_real_T *y, real_T
   emxArray_real_T *ynew;
   emxArray_real_T *b_xnew;
   emxArray_real_T *b_ynew;
-  emxArray_real_T *ylog;
   real_T p[3];
 
   /*  [sigma,mu,A]=gfit(x,y) */
@@ -160,101 +159,23 @@ static void gfit(const emxArray_real_T *x, const emxArray_real_T *y, real_T
 
   emxFree_real_T(&b_ynew);
   emxFree_real_T(&b_xnew);
-  b_emxInit_real_T(&ylog, 2);
 
   /* % fitting */
-  ixstart = ylog->size[0] * ylog->size[1];
-  ylog->size[0] = 1;
-  ylog->size[1] = ynew->size[1];
-  emxEnsureCapacity((emxArray__common *)ylog, ixstart, (int32_T)sizeof(real_T));
-  ix = ynew->size[0] * ynew->size[1] - 1;
-  for (ixstart = 0; ixstart <= ix; ixstart++) {
-    ylog->data[ixstart] = ynew->data[ixstart];
-  }
-
-  for (ixstart = 0; ixstart <= ynew->size[1] - 1; ixstart++) {
-    ylog->data[ixstart] = log(ylog->data[ixstart]);
-  }
-
-  emxFree_real_T(&ynew);
-  polyfit(xnew, ylog, p);
+  b_log(ynew);
+  polyfit(xnew, ynew, p);
   *sigma = sqrt(-1.0 / (2.0 * p[0]));
   *mu = p[1] * rt_powd_snf(*sigma, 2.0);
   *A = exp(p[2] + rt_powd_snf(*mu, 2.0) / (2.0 * rt_powd_snf(*sigma, 2.0)));
-  emxFree_real_T(&ylog);
+  emxFree_real_T(&ynew);
   emxFree_real_T(&xnew);
 }
 
-static real_T rt_powd_snf(real_T u0, real_T u1)
-{
-  real_T y;
-  real_T d0;
-  real_T d1;
-  if (rtIsNaN(u0) || rtIsNaN(u1)) {
-    y = rtNaN;
-  } else {
-    d0 = fabs(u0);
-    d1 = fabs(u1);
-    if (rtIsInf(u1)) {
-      if (d0 == 1.0) {
-        y = rtNaN;
-      } else if (d0 > 1.0) {
-        if (u1 > 0.0) {
-          y = rtInf;
-        } else {
-          y = 0.0;
-        }
-      } else if (u1 > 0.0) {
-        y = 0.0;
-      } else {
-        y = rtInf;
-      }
-    } else if (d1 == 0.0) {
-      y = 1.0;
-    } else if (d1 == 1.0) {
-      if (u1 > 0.0) {
-        y = u0;
-      } else {
-        y = 1.0 / u0;
-      }
-    } else if (u1 == 2.0) {
-      y = u0 * u0;
-    } else if ((u1 == 0.5) && (u0 >= 0.0)) {
-      y = sqrt(u0);
-    } else if ((u0 < 0.0) && (u1 > floor(u1))) {
-      y = rtNaN;
-    } else {
-      y = pow(u0, u1);
-    }
-  }
-
-  return y;
-}
-
-static real_T rt_roundd_snf(real_T u)
-{
-  real_T y;
-  if (fabs(u) < 4.503599627370496E+15) {
-    if (u >= 0.5) {
-      y = floor(u + 0.5);
-    } else if (u > -0.5) {
-      y = -0.0;
-    } else {
-      y = ceil(u - 0.5);
-    }
-  } else {
-    y = u;
-  }
-
-  return y;
-}
-
-void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2],
+void gfit_rdfile(const char_T filename_data[200], const int32_T filename_size[2],
                  real_T gfir[3], real_T gfuv[3])
 {
   int32_T tempvar;
-  int32_T nVar;
-  char_T tmp_data[101];
+  int32_T i0;
+  char_T tmp_data[201];
   char_T cv0[2];
   static const char_T cv1[2] = { 'r', '\x00' };
 
@@ -262,6 +183,7 @@ void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2]
   char_T bufline[65536];
   int32_T nStep;
   uint8_T char100;
+  int32_T posA;
   int32_T posB;
   int32_T nSam;
   int32_T nFs;
@@ -275,8 +197,6 @@ void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2]
   emxArray_real_T *dataMS;
   emxArray_real_T *dataIR;
   emxArray_real_T *dataUV;
-  int32_T xir;
-  int32_T xuv;
   int32_T k;
   emxArray_real_T *dataIR_mean;
   emxArray_real_T *dataUV_mean;
@@ -285,12 +205,14 @@ void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2]
   static const char_T cv5[3] = { '%', 'd', ' ' };
 
   int32_T exitg1;
-  char_T cv6[5];
-  static const char_T cv7[5] = { '%', 'd', ' ', '%', 'd' };
-
+  int32_T kChar;
+  int32_T xir;
+  int32_T ii;
+  int32_T q0;
+  real_T sigmaUV;
+  uint32_T qY;
   real_T AUV;
   real_T muUV;
-  real_T sigmaUV;
   real_T AIR;
   real_T muIR;
   real_T sigmaIR;
@@ -307,21 +229,21 @@ void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2]
   /*  NUL (\0) string terminator). */
   /*  Create a NUL terminated C string given a MATLAB string */
   tempvar = filename_size[1] - 1;
-  for (nVar = 0; nVar <= tempvar; nVar++) {
-    tmp_data[nVar] = filename_data[filename_size[0] * nVar];
+  for (i0 = 0; i0 <= tempvar; i0++) {
+    tmp_data[i0] = filename_data[filename_size[0] * i0];
   }
 
   tmp_data[filename_size[1]] = '\x00';
-  for (nVar = 0; nVar < 2; nVar++) {
-    cv0[nVar] = cv1[nVar];
+  for (i0 = 0; i0 < 2; i0++) {
+    cv0[i0] = cv1[i0];
   }
 
   f = fopen(&tmp_data[0], cv0);
   tempvar = (int)(f);
   if (tempvar == 0) {
-    for (nVar = 0; nVar < 3; nVar++) {
-      gfir[nVar] = -1.0;
-      gfuv[nVar] = -1.0;
+    for (i0 = 0; i0 < 3; i0++) {
+      gfir[i0] = -1.0;
+      gfuv[i0] = -1.0;
     }
   } else {
     /*  Call fseek(f, 0, SEEK_END) to set file position to the end of */
@@ -350,7 +272,7 @@ void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2]
     /*  Remaining is the number of bytes to read (from the file) */
     /*  Index is the current position to read into the buffer */
     char100 = 0;
-    tempvar = 0;
+    posA = 0;
     posB = 0;
     nSam = 0;
     nFs = 0;
@@ -359,16 +281,16 @@ void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2]
     /*  a temp variable to keep the value of current steps */
     fgets(&bufline[0], 1024, f);
     strlen(&bufline[0]);
-    for (nVar = 0; nVar < 51; nVar++) {
-      cv2[nVar] = cv3[nVar];
+    for (i0 = 0; i0 < 51; i0++) {
+      cv2[i0] = cv3[i0];
     }
 
-    nVar = fscanf(f, cv2, &char100, &tempvar, &posB, &nStep, &nSam, &nFs);
-    if (nVar != 6) {
+    tempvar = fscanf(f, cv2, &char100, &posA, &posB, &nStep, &nSam, &nFs);
+    if (tempvar != 6) {
       fclose(f);
-      for (nVar = 0; nVar < 3; nVar++) {
-        gfir[nVar] = -2.0;
-        gfuv[nVar] = -2.0;
+      for (i0 = 0; i0 < 3; i0++) {
+        gfir[i0] = -2.0;
+        gfuv[i0] = -2.0;
       }
     } else {
       for (tempvar = 0; tempvar < 3; tempvar++) {
@@ -379,38 +301,35 @@ void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2]
       emxInit_real_T(&dataMS, 1);
 
       /*  read data from 7-th line now */
-      nVar = dataMS->size[0];
+      i0 = dataMS->size[0];
       dataMS->size[0] = nStep;
-      emxEnsureCapacity((emxArray__common *)dataMS, nVar, (int32_T)sizeof(real_T));
+      emxEnsureCapacity((emxArray__common *)dataMS, i0, (int32_T)sizeof(real_T));
       tempvar = nStep - 1;
-      for (nVar = 0; nVar <= tempvar; nVar++) {
-        dataMS->data[nVar] = 0.0;
+      for (i0 = 0; i0 <= tempvar; i0++) {
+        dataMS->data[i0] = 0.0;
       }
 
       b_emxInit_real_T(&dataIR, 2);
 
       /*  k=nStep; */
-      nVar = dataIR->size[0] * dataIR->size[1];
+      i0 = dataIR->size[0] * dataIR->size[1];
       dataIR->size[0] = nStep;
       dataIR->size[1] = nSam;
-      emxEnsureCapacity((emxArray__common *)dataIR, nVar, (int32_T)sizeof(real_T));
+      emxEnsureCapacity((emxArray__common *)dataIR, i0, (int32_T)sizeof(real_T));
       tempvar = nStep * nSam - 1;
-      for (nVar = 0; nVar <= tempvar; nVar++) {
-        dataIR->data[nVar] = 0.0;
+      for (i0 = 0; i0 <= tempvar; i0++) {
+        dataIR->data[i0] = 0.0;
       }
 
       b_emxInit_real_T(&dataUV, 2);
-      nVar = dataUV->size[0] * dataUV->size[1];
+      i0 = dataUV->size[0] * dataUV->size[1];
       dataUV->size[0] = nStep;
       dataUV->size[1] = nSam;
-      emxEnsureCapacity((emxArray__common *)dataUV, nVar, (int32_T)sizeof(real_T));
+      emxEnsureCapacity((emxArray__common *)dataUV, i0, (int32_T)sizeof(real_T));
       tempvar = nStep * nSam - 1;
-      for (nVar = 0; nVar <= tempvar; nVar++) {
-        dataUV->data[nVar] = 0.0;
+      for (i0 = 0; i0 <= tempvar; i0++) {
+        dataUV->data[i0] = 0.0;
       }
-
-      xir = 0;
-      xuv = 0;
 
       /*  read data line-by-line */
       k = 0;
@@ -421,23 +340,23 @@ void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2]
         if (k + 1 <= nStep) {
           /*  fprintf('line %d, ',nline); */
           tempvar = mul_s32_s32_s32_sat(nSam, 10);
-          posB = 7 + tempvar;
-          if ((tempvar > 0) && (posB <= 0)) {
-            posB = MAX_int32_T;
+          posA = 7 + tempvar;
+          if ((tempvar > 0) && (posA <= 0)) {
+            posA = MAX_int32_T;
           }
 
-          tempvar = posB + 2;
-          if ((posB > 0) && (tempvar <= 0)) {
+          tempvar = posA + 2;
+          if ((posA > 0) && (tempvar <= 0)) {
             tempvar = MAX_int32_T;
           }
 
           fgets(&bufline[0], tempvar, f);
-          strlen(&bufline[0]);
+          posB = strlen(&bufline[0]);
 
           /*  fprintf('(%d)="%s',nChar,bufline(1:nChar));  % to debug if fgets ok */
           /*   % read motor step data */
-          for (nVar = 0; nVar < 3; nVar++) {
-            cv4[nVar] = cv5[nVar];
+          for (i0 = 0; i0 < 3; i0++) {
+            cv4[i0] = cv5[i0];
           }
 
           sscanf(&bufline[0], cv4, &k4step);
@@ -450,34 +369,83 @@ void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2]
           do {
             exitg1 = 0;
             if (nFs <= nSam) {
-              for (nVar = 0; nVar < 5; nVar++) {
-                cv6[nVar] = cv7[nVar];
+              /*  nVar=coder.ceval('sscanf',coder.ref(bufline(7+10*(i-1))), ['%d %d'],coder.ref(xir), coder.ref(xuv)); */
+              posA = nFs - 1;
+              if ((nFs < 0) && (posA >= 0)) {
+                posA = MIN_int32_T;
               }
 
-              posB = nFs - 1;
-              if ((nFs < 0) && (posB >= 0)) {
-                posB = MIN_int32_T;
+              tempvar = mul_s32_s32_s32_sat(10, posA);
+              kChar = 7 + tempvar;
+              if ((tempvar > 0) && (kChar <= 0)) {
+                kChar = MAX_int32_T;
               }
 
-              tempvar = mul_s32_s32_s32_sat(10, posB);
-              posB = 7 + tempvar;
-              if ((tempvar > 0) && (posB <= 0)) {
-                posB = MAX_int32_T;
+              xir = 0;
+              posA = 0;
+
+              /*  fprintf('bufline=%s,  ',bufline(kChar:kChar+9)); */
+              for (ii = 0; ii < 4; ii++) {
+                /*  x4Char(ii)=bufline(kChar+ii-1)-30; */
+                q0 = mul_s32_s32_s32_sat(xir, 10);
+                sigmaUV = rt_roundd_snf((real_T)kChar + (1.0 + (real_T)ii));
+                if (sigmaUV < 2.147483648E+9) {
+                  i0 = (int32_T)sigmaUV;
+                } else {
+                  i0 = MAX_int32_T;
+                }
+
+                tempvar = bufline[i0 - 2];
+                qY = (uint32_T)tempvar - 48U;
+                if (qY > (uint32_T)tempvar) {
+                  qY = 0U;
+                }
+
+                tempvar = (int32_T)qY;
+                xir = q0 + tempvar;
+                if ((q0 > 0) && ((tempvar > 0) && (xir <= 0))) {
+                  xir = MAX_int32_T;
+                }
+
+                q0 = mul_s32_s32_s32_sat(posA, 10);
+                posA = kChar + 5;
+                if ((kChar > 0) && (posA <= 0)) {
+                  posA = MAX_int32_T;
+                }
+
+                sigmaUV = rt_roundd_snf((real_T)posA + (1.0 + (real_T)ii));
+                if (sigmaUV < 2.147483648E+9) {
+                  i0 = (int32_T)sigmaUV;
+                } else {
+                  i0 = MAX_int32_T;
+                }
+
+                tempvar = bufline[i0 - 2];
+                qY = (uint32_T)tempvar - 48U;
+                if (qY > (uint32_T)tempvar) {
+                  qY = 0U;
+                }
+
+                tempvar = (int32_T)qY;
+                posA = q0 + tempvar;
+                if ((q0 > 0) && ((tempvar > 0) && (posA <= 0))) {
+                  posA = MAX_int32_T;
+                }
               }
 
-              nVar = sscanf(&bufline[posB - 1], cv6, &xir, &xuv);
-              if (nVar != 2) {
+              if (kChar > posB) {
+                /*  ERROR: no enough chars for reading,  */
                 fclose(f);
-                for (nVar = 0; nVar < 3; nVar++) {
-                  gfir[nVar] = -2.0;
-                  gfuv[nVar] = -2.0;
+                for (i0 = 0; i0 < 3; i0++) {
+                  gfir[i0] = -2.0;
+                  gfuv[i0] = -2.0;
                 }
 
                 exitg1 = 1;
               } else {
                 /*  fprintf (' %04d %04d', xir, xuv); */
                 dataIR->data[k + dataIR->size[0] * (nFs - 1)] = (double)(xir);
-                dataUV->data[k + dataUV->size[0] * (nFs - 1)] = (double)(xuv);
+                dataUV->data[k + dataUV->size[0] * (nFs - 1)] = (double)(posA);
                 nFs++;
               }
             } else {

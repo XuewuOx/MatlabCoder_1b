@@ -3,7 +3,7 @@
  *
  * Code generation for function 'meanfile'
  *
- * C source code generated on: Thu Feb 14 17:57:51 2013
+ * C source code generated on: Sat Mar 16 18:31:26 2013
  *
  */
 
@@ -31,6 +31,6 @@
 /* Variable Definitions */
 
 /* Function Declarations */
-extern void meanfile(const char_T filename_data[100], const int32_T filename_size[2], real_T dIR[2], real_T dUV[2]);
+extern void meanfile(const char_T filename_data[200], const int32_T filename_size[2], real_T IRgf[3], real_T UVgf[3], real_T IRavg[2], real_T UVavg[2]);
 #endif
 /* End of code generation (meanfile.h) */

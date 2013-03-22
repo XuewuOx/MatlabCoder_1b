@@ -3,12 +3,13 @@
  *
  * Code generation for function 'gfit_emxutil'
  *
- * C source code generated on: Thu Feb 14 17:57:51 2013
+ * C source code generated on: Sat Mar 16 18:31:26 2013
  *
  */
 
 /* Include files */
 #include "rt_nonfinite.h"
+#include "gfitPDF.h"
 #include "gfit_rdfile.h"
 #include "meanfile.h"
 #include "gfit_emxutil.h"
@@ -25,6 +26,24 @@
 
 /* Function Definitions */
 void b_emxInit_real_T(emxArray_real_T **pEmxArray, int32_T numDimensions)
+{
+  emxArray_real_T *emxArray;
+  int32_T loop_ub;
+  int32_T i;
+  *pEmxArray = (emxArray_real_T *)malloc(sizeof(emxArray_real_T));
+  emxArray = *pEmxArray;
+  emxArray->data = (real_T *)NULL;
+  emxArray->numDimensions = numDimensions;
+  emxArray->size = (int32_T *)malloc((uint32_T)(sizeof(int32_T) * numDimensions));
+  emxArray->allocatedSize = 0;
+  emxArray->canFreeData = TRUE;
+  loop_ub = numDimensions - 1;
+  for (i = 0; i <= loop_ub; i++) {
+    emxArray->size[i] = 0;
+  }
+}
+
+void c_emxInit_real_T(emxArray_real_T **pEmxArray, int32_T numDimensions)
 {
   emxArray_real_T *emxArray;
   int32_T loop_ub;

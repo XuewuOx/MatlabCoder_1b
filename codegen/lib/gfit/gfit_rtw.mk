@@ -74,7 +74,7 @@ COMPILER_TOOL_CHAIN = lcc
 #  EXTMODE_STATIC_SIZE - Size of static memory allocation buffer.
 
 MODEL                = gfit
-MODULES              = gfit_rtwutil.c gfit_initialize.c gfit_terminate.c gfit_rdfile.c mean.c rdivide.c polyfit.c meanfile.c std.c gfit_emxutil.c rt_nonfinite.c rtGetNaN.c rtGetInf.c 
+MODULES              = gfit_rtwutil.c gfit_initialize.c gfit_terminate.c gfit_rdfile.c mean.c rdivide.c hist.c log.c polyfit.c gfitPDF.c linspace.c meanfile.c std.c gfit_emxutil.c gfit_emxAPI.c rt_nonfinite.c rtGetNaN.c rtGetInf.c 
 MAKEFILE             = gfit_rtw.mk
 MATLAB_ROOT          = F:\myMatlab2012a
 ALT_MATLAB_ROOT      = F:\MYMATL~1

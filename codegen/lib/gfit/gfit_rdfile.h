@@ -3,7 +3,7 @@
  *
  * Code generation for function 'gfit_rdfile'
  *
- * C source code generated on: Thu Feb 14 17:57:51 2013
+ * C source code generated on: Sat Mar 16 18:31:26 2013
  *
  */
 
@@ -31,6 +31,6 @@
 /* Variable Definitions */
 
 /* Function Declarations */
-extern void gfit_rdfile(const char_T filename_data[100], const int32_T filename_size[2], real_T gfir[3], real_T gfuv[3]);
+extern void gfit_rdfile(const char_T filename_data[200], const int32_T filename_size[2], real_T gfir[3], real_T gfuv[3]);
 #endif
 /* End of code generation (gfit_rdfile.h) */

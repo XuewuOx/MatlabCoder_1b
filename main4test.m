@@ -1,6 +1,7 @@
 function main
 % test meanfile over data file wtrir_foam200.txt
-gfit_rdfile_mex('meanfile','.\work_gfit_rdfile\wtrir_foam3000.txt')
+% gfit_rdfile_mex('meanfile','.\work_gfit_rdfile\wtrir_foam.txt')
+gfit_rdfile_mex('meanfile','.\work_gfit_rdfile\wtrir_foam2000.txt')
 return;
 %% clearing
 fclose all; close all; clear all; 

@@ -3,12 +3,13 @@
  *
  * Code generation for function 'polyfit'
  *
- * C source code generated on: Thu Feb 14 17:57:51 2013
+ * C source code generated on: Sat Mar 16 18:31:26 2013
  *
  */
 
 /* Include files */
 #include "rt_nonfinite.h"
+#include "gfitPDF.h"
 #include "gfit_rdfile.h"
 #include "meanfile.h"
 #include "polyfit.h"
@@ -92,7 +93,7 @@ static void eml_qrsolve(const emxArray_real_T *A, emxArray_real_T *B, real_T Y[3
   emxArray_real_T *b_A;
   real_T smax;
   int32_T mn;
-  int32_T i1;
+  int32_T i2;
   int32_T nmip1;
   int32_T m;
   int32_T b_mn;
@@ -126,13 +127,13 @@ static void eml_qrsolve(const emxArray_real_T *A, emxArray_real_T *B, real_T Y[3
   }
 
   mn = (int32_T)smax - 1;
-  i1 = b_A->size[0] * b_A->size[1];
+  i2 = b_A->size[0] * b_A->size[1];
   b_A->size[0] = A->size[0];
   b_A->size[1] = 3;
-  emxEnsureCapacity((emxArray__common *)b_A, i1, (int32_T)sizeof(real_T));
+  emxEnsureCapacity((emxArray__common *)b_A, i2, (int32_T)sizeof(real_T));
   nmip1 = A->size[0] * A->size[1] - 1;
-  for (i1 = 0; i1 <= nmip1; i1++) {
-    b_A->data[i1] = A->data[i1];
+  for (i2 = 0; i2 <= nmip1; i2++) {
+    b_A->data[i2] = A->data[i2];
   }
 
   m = A->size[0];
@@ -142,8 +143,8 @@ static void eml_qrsolve(const emxArray_real_T *A, emxArray_real_T *B, real_T Y[3
     b_mn = 3;
   }
 
-  for (i1 = 0; i1 < 3; i1++) {
-    jpvt[i1] = (int8_T)(1 + i1);
+  for (i2 = 0; i2 < 3; i2++) {
+    jpvt[i2] = (int8_T)(1 + i2);
   }
 
   if (A->size[0] == 0) {
@@ -256,9 +257,9 @@ static void eml_qrsolve(const emxArray_real_T *A, emxArray_real_T *B, real_T Y[3
             }
 
             iy = 0;
-            i1 = i_ip1 + m * (lastc - 1);
+            i2 = i_ip1 + m * (lastc - 1);
             nmip1 = i_ip1;
-            while ((m > 0) && (nmip1 <= i1)) {
+            while ((m > 0) && (nmip1 <= i2)) {
               ix = i_i;
               smax = 0.0;
               pvt = nmip1 + lastv;
@@ -280,8 +281,8 @@ static void eml_qrsolve(const emxArray_real_T *A, emxArray_real_T *B, real_T Y[3
               if (work[nmip1] != 0.0) {
                 smax = work[nmip1] * -tau_data[i];
                 ix = i_i;
-                i1 = lastv + i_ip1;
-                for (pvt = i_ip1; pvt <= i1; pvt++) {
+                i2 = lastv + i_ip1;
+                for (pvt = i_ip1; pvt <= i2; pvt++) {
                   b_A->data[pvt - 1] += b_A->data[ix] * smax;
                   ix++;
                 }
@@ -375,8 +376,8 @@ static void eml_qrsolve(const emxArray_real_T *A, emxArray_real_T *B, real_T Y[3
   for (iy = 0; iy <= mn; iy++) {
     if (tau_data[iy] != 0.0) {
       smax = B->data[iy];
-      i1 = A->size[0] - iy;
-      for (i = 0; i <= i1 - 2; i++) {
+      i2 = A->size[0] - iy;
+      for (i = 0; i <= i2 - 2; i++) {
         b_i = ((uint32_T)iy + (uint32_T)i) + 2U;
         smax += b_A->data[((int32_T)b_i + b_A->size[0] * iy) - 1] * B->data
           [(int32_T)b_i - 1];
@@ -385,8 +386,8 @@ static void eml_qrsolve(const emxArray_real_T *A, emxArray_real_T *B, real_T Y[3
       smax *= tau_data[iy];
       if (smax != 0.0) {
         B->data[iy] -= smax;
-        i1 = A->size[0] - iy;
-        for (i = 0; i <= i1 - 2; i++) {
+        i2 = A->size[0] - iy;
+        for (i = 0; i <= i2 - 2; i++) {
           b_i = ((uint32_T)iy + (uint32_T)i) + 2U;
           B->data[(int32_T)b_i - 1] -= b_A->data[((int32_T)b_i + b_A->size[0] *
             iy) - 1] * smax;
@@ -446,11 +447,11 @@ static real_T eml_xnrm2(int32_T n, const emxArray_real_T *x, int32_T ix0)
 static void eml_xscal(int32_T n, real_T a, emxArray_real_T *x, int32_T ix0)
 {
   emxArray_real_T *b_x;
-  int32_T i2;
+  int32_T i5;
   int32_T k;
   b_emxInit_real_T(&b_x, 2);
-  i2 = (ix0 + n) - 1;
-  for (k = ix0; k <= i2; k++) {
+  i5 = (ix0 + n) - 1;
+  for (k = ix0; k <= i5; k++) {
     x->data[k - 1] *= a;
   }
 
